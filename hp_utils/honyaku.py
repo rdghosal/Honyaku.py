@@ -8,19 +8,22 @@ def to_staggered(infile):
     outfile = "staggered_" + filename
     in_contents = []
 
+    # Read as list in order to iterate through and format each line
     with open(infile, "r", encoding="utf-8") as fin:
         in_contents = fin.readlines()
     
     # Ensure .txt output
     outfile = os.path.splitext(outfile)[0] + ".txt"
     dest = os.path.join(dir_, outfile)
+
+    # Write out CSV contents, using header to label each line
     with open(dest, "w", encoding="utf-8") as fout:
-        title, headers = in_contents[0], in_contents[1].rstrip()
+        title, headers = in_contents[0], in_contents[1].rstrip() # Strip newline
         headers = headers.split(",")
         fout.write(title)
         for line in in_contents[2:]:
             if line.find(",") > -1:
-                jp, eng = line.split(",")[0], line.split(",")[1].rstrip()
+                jp, eng = line.split(",")[0], line.split(",")[1].rstrip() # Strip newline
                 fout.write(headers[0] + ": " + jp + "\n")
                 fout.write(headers[1] + ": " + eng + "\n")
                 fout.write("\n")
@@ -30,7 +33,7 @@ def to_staggered(infile):
 
 def main():
     if len(sys.argv) < 2:
-        print("USAGE: python honyaku.py <file>")
+        print("USAGE: python honyaku.py <folder_path>")
         sys.exit(-1)
     
     folder = sys.argv[1]
