@@ -1,6 +1,8 @@
 import os, sys, requests, lxml, html5lib
 from bs4 import BeautifulSoup
 from selenium import webdriver
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import StaleElementReferenceException
 from time import sleep
 
 def main():
@@ -13,35 +15,71 @@ def main():
     # Open page
     browser = webdriver.Chrome(os.getenv("CHROME"))
     browser.get(url)
+    tar_paths = ["//h4[@class=' c-small_headline']", "//p[@class=' c-body']"]
 
     # Find target tab, click,
     # and grab all anchor elements there
     browser.find_element_by_xpath("//a[text()='News']").click()
     sleep(3)
     anchors = browser.find_elements_by_xpath("//a[@class='syousai']")
-    
-    tar_paths = ["//h4[@class=' c-small_headline']", "//p[@class=' c-body']"]
+    hrefs = [ anchor.get_attribute("href") for anchor in anchors ]
+    news = os.path.split(browser.current_url)[0]
 
     text = ""
-    pos = 50
-    for i in range(len(anchors)):
+    for i, hr in enumerate(hrefs):
+        browser.get(hr)
         sleep(5)
-        anchors[i].click()
         headlines = browser.find_elements_by_xpath(tar_paths[0])
         for h in headlines:
-            text += h.text
-            text += "\n"
+            sleep(1)
+            if h.is_displayed():
+                text += h.text
+                text += "\n"
         text += "===\n"
         body = browser.find_element_by_xpath(tar_paths[1])
-        text += body.text
-        "\n**************\n"
+        if body.is_displayed(): text += body.text
+        text += "\n**************\n"
         browser.back()
-        browser.execute_script(f"window.scrollTo({pos})")
+        # browser.execute_script(f"window.scrollTo({pos})")
         sleep(2)
-    
+
     dest = os.path.join(os.getenv("SCRAPE_PATH"), "news_scraped.txt")
     with open(dest, "w", encoding="utf-8") as f:
         f.write(text)
+
+
+
+
+    # text = ""
+    # pos = 50
+    # for anchor in anchors:
+        
+    #     sleep(2)
+    #     try:
+    #         if anchor.is_displayed(): browser.execute_script("arguments[0].click();", anchor) 
+    #     except StaleElementReferenceException:
+    #         print("stale, thus refreshing")
+    #         browser.refresh()
+    #         sleep(5)
+    #         browser.execute_script("arguments[0].click();", anchor)
+
+    #     # anchors[i].click()
+    #     headlines = browser.find_elements_by_xpath(tar_paths[0])
+    #     for h in headlines:
+    #         if h.is_displayed():
+    #             text += h.text
+    #             text += "\n"
+    #     text += "===\n"
+    #     body = browser.find_element_by_xpath(tar_paths[1])
+    #     if body.is_displayed(): text += body.text
+    #     text += "\n**************\n"
+    #     browser.back()
+    #     # browser.execute_script(f"window.scrollTo({pos})")
+    #     sleep(2)
+    
+    # dest = os.path.join(os.getenv("SCRAPE_PATH"), "news_scraped.txt")
+    # with open(dest, "w", encoding="utf-8") as f:
+    #     f.write(text)
 
     print(f"Scraping complete! Check {os.getenv('SCRAPE_PATH')}")    
 
