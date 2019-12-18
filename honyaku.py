@@ -6,16 +6,14 @@ from bs4 import BeautifulSoup
 
 class ScrapeQueue():
     """Queue of unique URLs to be used for scraping"""
-    def __init__(self, urls):
+    def __init__(self, urls=set()):
         # Ensure that only a set is passed
         self.__url_memo = set(urls) if not isinstance(urls, set) else url_set
         self.__queue = self._init_queue(self.__url_memo.copy())
 
-    @property
-    def memo(self):
-        """Return memo of unique urls added to queue"""
-        return self.__url_memo
-    
+    def __len__(self):
+        return len(self.__queue.queue)
+
     def _init_queue(self, url_set):
         """Instantiates queue"""
         q = queue.Queue()
@@ -27,7 +25,7 @@ class ScrapeQueue():
         """Pops url off queue"""
         return self.__queue.pop()
 
-    def add(self, url):
+    def push(self, url):
         """Adds url to queue if new"""
         if url not in self.__url_memo:
             self.__url_memo.add(url)
@@ -51,7 +49,7 @@ def verify_dir(dir_):
     Makes dir if not yet existing.
     """
     is_valid = False
-    if os.path.isabs(dir_):
+    if os.path.isabs(dir_) and os.path.isdir(dir_):
         is_valid = True
     if not os.path.exists(dir_):
         os.mkdir(dir_)
@@ -67,23 +65,49 @@ def check_english(url):
     """
     pass
 
+def save_scraping(dir_, format_, lang):
+    """
+    Saves scraping output as local file
+    """
+    # Format output
+    ext = ".csv" if format_ == "csv" else ".txt"
+    basename = "honyaku_output"
+    path = os.path.join(dir_, filename + ext)
+    
+    if format_ == "csv":
+        to_csv(path=path, text_dict=text_dict, lang=lang)
+    else:
+        to_txt(path=path, text_dict=text_dict, lang=lang)
 
-def scrape_webpage(url, lang, format_):
+def scrape_webpage(queue, format_, dir_, lang=""):
     """
     Navigates to input URL and parses HTML for relative links,
     scraping each page for its text
     """
-    # Get html from input url
-    print(f"Sending request to {url}...")
-    r = requests.get(url)
+    text_dict = dict()
+    while len(queue) > 0:
+        # Get html data from url on queue
+        url = queue.pop()
+        print(f"Scraping {url}...")
+        r = requests.get(url)
 
-    # Handle bad request
-    if not r.status_code == 200:
-        print(f"Failed to scrape webpage.\n Status code: {r.status_code}")
-        return -1 
+        # Handle bad request
+        if not r.status_code == 200:
+            print(f"Failed to scrape {url}.\n Status code: {r.status_code}")
+            return -1 
+        
+        soup = BeautifulSoup(r.content, "html.parser")
+        hrefs = yank_rel_hrefs(soup.find_all("a")) # set instance
+        
+        # Add found links to queue
+        for h in hrefs: queue.push(h)
+
+        # Add contents to text_dict
+        title = soup.get("title")
+        text = soup.get_text()
+        text_dict[title] = text
     
-    soup = BeautifulSoup(r.content, "html.parser")
-    hrefs = pull_hrefs(soup.find_all("a")) # set instance
+    save_scraping(dir_, text_dict, lang)
     
 
 
@@ -115,10 +139,12 @@ if __name__ == "__main__":
     exit_code = -1
     args = parser.parse_args()
     if verify_url(args.url) and verify_dir(args.directory):
+        q = ScrapeQueue(args.url)
         if args.check:
-            exit_code = check_english(url=args.url)
+            exit_code = check_english(queue=q)
         else:
-            exit_code = scrape_webpage(url=args.url, lang=args.language, format_=args.format)
+            exit_code = scrape_webpage(queue=q, lang=args.language,\
+                                       format_=args.format, dir_=args.directory)
 
     # Print exit code and quit
     print(f"Finished program with exit code {exit_code}")
