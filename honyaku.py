@@ -1,5 +1,6 @@
 #!usr/bin/env/python
-import os, sys, requests, selenium, argparse, re, queue
+import os, sys, requests, selenium, argparse, re, queue, csv
+from datetime import date
 from selenium.common.exceptions import StaleElementReferenceException
 from bs4 import BeautifulSoup
 
@@ -57,6 +58,46 @@ def verify_dir(dir_):
     return is_valid
 
 
+def _pass_to_driver(url):
+    """
+    Uses Selenium à la Chrome to parse dynamic webpage for relative links
+    """
+    # TODO
+    pass
+
+def yank_rel_hrefs(anchors):
+    """
+    Returns a set of hrefs from a list of anchors
+    """
+    # TODO
+    href_set = set()
+    for anchor in anchors:
+        href = anchor["href"]
+        if href.find(".") == -1:
+            href_set = _pass_to_driver(url)
+        elif href.find("http"): continue # Avoid external links
+        else:
+            href_set.add(anchor["href"])   
+
+    return href_set
+
+
+def clean_text(text):
+    """
+    Returns the input text after cleaning for extraneous spaces and symbols
+    """
+    # To convert into iterable
+    text = text.split(",")
+
+    # Regex for lines starting with special chars
+    # all of which are set to empty strings to be filtered out later
+    for line in text.split(","):
+        line = line.strip() # Clean off empty space
+        if re.search(r"^[\\\[\"\'\/]", text[line]):
+            line = "" 
+        if line: yield line
+
+
 def check_english(url):
     """
     Walks through provided URL,
@@ -65,29 +106,70 @@ def check_english(url):
     """
     pass
 
-def save_scraping(dir_, format_, lang):
+
+def to_csv(fout, text_dict, lang):
+    """
+    Saves scraped output text to a CSV file
+    formatted to allow side-by-side translations.
+    """
+    # Encoding set to utf-8 to allow for different charsets
+    writer = csv.DictWriter(fout, fieldnames=[lang, "English"])
+    writer.writeheader()
+    for k in text_dict.keys():
+        print(f"  Writing lines scraped from page {k}")
+        writer.write(k.upper()) # To make clear what page is being written 
+        for line in text_dict[k]:
+            writer.writerow({lang: line, "English": ""})
+
+
+def to_txt(fout, text_dict, lang):
+    """
+    Saves scraped output text to a textfile
+    formatted to allow a 'staggered' view for the translation.
+    """
+    for k in text_dict.keys():
+        fout.write(k.upper())
+        print(f"  Writing lines scraped from page {k}")
+        for line in text_dict[k]:
+            fout.write(f"{lang}: {line}")
+            fout.write(f"English: ")
+        fout.write("==========") # To separate from next page
+
+
+def save_scrapings(root, dir_, format_, lang):
     """
     Saves scraping output as local file
     """
-    # Format output
-    ext = ".csv" if format_ == "csv" else ".txt"
-    basename = "honyaku_output"
-    path = os.path.join(dir_, filename + ext)
+    # Format output file path
+    # as dir/dd-MM-yy_baseUrl.ext
+    ext = format_
+    today = date.strftime(date.today(), "%d-%m-%y")
+    base_url = re.search(r"https?://w?w?w?\.?(\d+)\.", root).group(1)
+    path = os.path.join(dir_, f"{today}_{base_url}.{ext}")
     
-    if format_ == "csv":
-        to_csv(path=path, text_dict=text_dict, lang=lang)
-    else:
-        to_txt(path=path, text_dict=text_dict, lang=lang)
+    print(f"Writing {os.path.split(path)[1]} to {os.path.split(path)[0]}")
+
+    with open(path, "w", encoding="utf-8") as fout:
+        if format_ == "csv":
+            to_csv(fout=fout, text_dict=text_dict, lang=lang)
+        else:
+            to_txt(fout=fout, text_dict=text_dict, lang=lang)
+
+    print(f"Scraped webpage saved to {path}")
+
 
 def scrape_webpage(queue, format_, dir_, lang=""):
     """
     Navigates to input URL and parses HTML for relative links,
     scraping each page for its text
     """
+    root = ""
     text_dict = dict()
+
     while len(queue) > 0:
         # Get html data from url on queue
         url = queue.pop()
+        if not root: root = url[:]
         print(f"Scraping {url}...")
         r = requests.get(url)
 
@@ -96,19 +178,22 @@ def scrape_webpage(queue, format_, dir_, lang=""):
             print(f"Failed to scrape {url}.\n Status code: {r.status_code}")
             return -1 
         
-        soup = BeautifulSoup(r.content, "html.parser")
-        hrefs = yank_rel_hrefs(soup.find_all("a")) # set instance
+        # Using lmxl parser and utf-8 to account for various charsets
+        soup = BeautifulSoup(r.content, "lxml", from_encoding="utf-8")
+        hrefs = yank_rel_hrefs(url, soup.find_all("a")) # set instance
         
         # Add found links to queue
         for h in hrefs: queue.push(h)
 
         # Add contents to text_dict
         title = soup.get("title")
-        text = soup.get_text()
-        text_dict[title] = text
+        text = soup.get_text(",")
+        text_dict[title] = clean_text(text) # Text passed as generator to lower mem load
     
-    save_scraping(dir_, text_dict, lang)
-    
+    save_scrapings(root=root, dir_=dir_, text_dict=text_dict, lang=lang)
+
+    # Success
+    return 0    
 
 
 if __name__ == "__main__":
