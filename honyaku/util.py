@@ -4,16 +4,31 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 # from selenium.common.exceptions import StaleElementReferenceException
 
+    
+class InvalidURLError(Exception):
+    pass
+
 
 def verify_url(url):
     """
     Uses re module and built-in str methods to check whether URL is valid
     """
     is_valid = False
-    if re.search(r"^https?://", url) and re.search(r".*\.\w{2,3}/?$", url):
+    if re.search(r"^https?://www\.", url) and re.search(r".*\.\w{2,3}/?$", url):
         is_valid = True
 
     return is_valid
+
+
+def correct_url(url):
+    """
+    Returns a verified URL after appending a forward slash
+    """
+    if not verify_url(url):
+        raise InvalidURLError
+    if not url.endswith("/"):
+        url += "/"
+    return url
 
 
 def verify_dir(dir_):
@@ -30,7 +45,7 @@ def verify_dir(dir_):
     return is_valid
 
 
-def _yank_via_driver(url):
+def yank_hrefs_via_driver(url):
     """
     Uses Selenium à la Chrome to parse dynamic webpage for relative links
     """
@@ -58,7 +73,7 @@ def _yank_via_driver(url):
     browser.quit()
 
 
-def yank_rel_hrefs(url, anchors):
+def yank_hrefs(url, anchors):
     """
     Returns a set of hrefs from a list of anchors
     """
@@ -68,7 +83,7 @@ def yank_rel_hrefs(url, anchors):
         if href.find(".") == -1:
             # Faulty url found;
             # pass url to selenium driver for yanking
-            for x in _yank_via_driver(url):
+            for x in yank_hrefs_via_driver(url):
                 href_set.add(x)
         elif href.find("http"): 
             continue # Avoid external links

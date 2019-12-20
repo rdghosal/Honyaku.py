@@ -1,12 +1,12 @@
-#!usr/bin/env/python
+#!usr/bin/env/python3
 import os, sys, requests, argparse, re, csv
-import util
-
-from scrapequeue import ScrapeQueue
 from datetime import date
 from bs4 import BeautifulSoup
 from textblob import TextBlob, download_corpora
 from textblob.exceptions import MissingCorpusError, MissingCorpusException
+
+from .scrapequeue import ScrapeQueue
+from .util import verify_dir, verify_url, clean_text, detect_lang, yank_hrefs
 
 
 def check_spelling(text_dict):
@@ -126,7 +126,7 @@ def scrape_webpage(root, dir_, format_, lang="", needs_check=False):
         
         # Using lmxl parser and utf-8 to account for various charsets
         soup = BeautifulSoup(r.content, "lxml", from_encoding="utf-8")
-        hrefs = util.yank_rel_hrefs(url, soup.find_all("a")) # set instance
+        hrefs = yank_hrefs(url, soup.find_all("a")) # set instance
         
         # Add found links to queue
         for h in hrefs:
@@ -136,9 +136,9 @@ def scrape_webpage(root, dir_, format_, lang="", needs_check=False):
         title = soup.get("title")
         text = soup.get_text(separator=",")        
         if not lang: 
-            lang = util.detect_lang(text) # Set lang
+            lang = detect_lang(text) # Set lang
 
-        text_dict[title] = util.clean_text(text) # Text passed as generator to lower mem load
+        text_dict[title] = clean_text(text) # Text passed as generator to lower mem load
 
     if needs_check:
         return check_spelling(text_dict)
@@ -152,7 +152,7 @@ def main(args):
     Takes argparse arguments object,
     and returns exit code based on success of selected process.
     """    
-    if util.verify_url(args.url) and util.verify_dir(args.directory):
+    if verify_url(args.url) and verify_dir(args.directory):
        return scrape_webpage(root=args.url, dir_=args.directory, format_=args.format,\
                              lang=args.language, needs_check=args.check) 
 
