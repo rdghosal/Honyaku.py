@@ -13,7 +13,7 @@ class ScrapeQueue():
     """Queue of unique URLs to be used for scraping"""
     def __init__(self, urls=set()):
         # Ensure that only a set is passed
-        self.__url_memo = set(urls) if not isinstance(urls, set) else url_set
+        self.__url_memo = set(urls) if not isinstance(urls, set) else urls
         self.__queue = self._init_queue(self.__url_memo.copy())
 
     def __len__(self):
@@ -34,7 +34,7 @@ class ScrapeQueue():
         """Adds url to queue if new"""
         if url not in self.__url_memo:
             self.__url_memo.add(url)
-            self.queue.put(url)
+            self.__queue.put(url)
 
 
 def verify_url(url):
@@ -90,7 +90,7 @@ def _yank_via_driver(url):
     browser.quit()
 
 
-def yank_rel_hrefs(anchors):
+def yank_rel_hrefs(url, anchors):
     """
     Returns a set of hrefs from a list of anchors
     """
@@ -102,7 +102,8 @@ def yank_rel_hrefs(anchors):
             # pass url to selenium driver for yanking
             for x in _yank_via_driver(url):
                 href_set.add(x)
-        elif href.find("http"): continue # Avoid external links
+        elif href.find("http"): 
+            continue # Avoid external links
         else:
             href_set.add(anchor["href"])   
 
@@ -120,16 +121,15 @@ def clean_text(text):
     # all of which are set to empty strings to be filtered out later
     for line in text.split(","):
         line = line.strip() # Clean off empty space
-        if re.search(r"^[\\\[\"\'\/]", text[line]):
-            line = "" 
-        if line: yield line
+        if not re.search(r"^[\\\[\"\'\/]", text[line]):
+            yield line
+
 
 def detect_lang(text):
     """
     Uses Google Translate API to detect language
     """
     # Track frequencies of each language
-    lang = ""
     lang_freqs = dict()
     try:
         for line in text.split(","):
@@ -138,10 +138,11 @@ def detect_lang(text):
             lang_freqs[lang] = lang_freqs.get(lang, 0) + 1 # + 1; set lang if not there
     except:
         print("Failed to connect to Google Translate and detect language.")
-        print("WARNING: Consider checking Internet connection")
+        print("WARNING: Consider checking Internet connection.")
         return "Unknown"
     
     # Settle on the most frequent language
+    lang = ""
     for k, v in lang_freqs.items():
         highest = 0
         if v > highest:
@@ -189,7 +190,7 @@ def check_spelling(text_dict):
     return 0        
 
 
-def to_csv(fout, text_dict, lang):
+def _to_csv(fout, text_dict, lang):
     """
     Saves scraped output text to a CSV file
     formatted to allow side-by-side translations.
@@ -199,12 +200,12 @@ def to_csv(fout, text_dict, lang):
     writer.writeheader()
     for k in text_dict.keys():
         print(f"  Writing lines scraped from page {k}")
-        writer.write(k.upper()) # To make clear what page is being written 
+        fout.write(k.upper()) # To make clear what page is being written
         for line in text_dict[k]:
             writer.writerow({lang: line, "English": ""})
 
 
-def to_txt(fout, text_dict, lang):
+def _to_txt(fout, text_dict, lang):
     """
     Saves scraped output text to a textfile
     formatted to allow a 'staggered' view for the translation.
@@ -218,7 +219,7 @@ def to_txt(fout, text_dict, lang):
         fout.write("==========\n") # To separate from next page
 
 
-def save_scrapings(root, dir_, format_, lang):
+def save_scrapings(root, dir_, format_, text_dict, lang):
     """
     Saves scraping output as local file
     """
@@ -234,56 +235,58 @@ def save_scrapings(root, dir_, format_, lang):
     try:
         with open(path, "w", encoding="utf-8") as fout:
             if format_ == "csv":
-                to_csv(fout=fout, text_dict=text_dict, lang=lang)
+                _to_csv(fout, text_dict, lang)
             else:
-                to_txt(fout=fout, text_dict=text_dict, lang=lang)
+                _to_txt(fout, text_dict, lang)
     except:
         print(f"Failed to save scrapings to {path}.\n\
                 Check system configurations and try again.")
-        return False
+        return -2
 
     print(f"Scraped webpage saved to {path}")
-    return True
+    return 0
 
 
-def scrape_webpage(queue, format_, dir_, lang=""):
+def scrape_webpage(root, dir_, format_, lang="", needs_check=False):
     """
     Navigates to input URL and parses HTML for relative links,
     scraping each page for its text
     """
-    root = ""
     text_dict = dict()
+    queue = ScrapeQueue(root)
 
     while len(queue) > 0:
         # Get html data from url on queue
         url = queue.dequeue()
-        if not root: root = url[:] # Use first item on queue as root
 
         print(f"Scraping {url}...")
         r = requests.get(url)
 
         # Log bad request to console
         if not r.status_code == 200:
-            print(f"Failed to scrape {url}.\n Status code: {r.status_code}")
-            continue 
+            print(f"Failed to scrape {url}.\n Status code: {r.status_code}\n")
+            continue
         
         # Using lmxl parser and utf-8 to account for various charsets
         soup = BeautifulSoup(r.content, "lxml", from_encoding="utf-8")
         hrefs = yank_rel_hrefs(url, soup.find_all("a")) # set instance
         
         # Add found links to queue
-        for h in hrefs: queue.enqueue(h)
+        for h in hrefs:
+            queue.enqueue(h)
 
         # Add contents to text_dict
         title = soup.get("title")
         text = soup.get_text(separator=",")
-        if not lang: lang = detect_lang(text) # Set lang
+        if not lang: 
+            lang = detect_lang(text) # Set lang
         text_dict[title] = clean_text(text) # Text passed as generator to lower mem load
-    
-    if save_scrapings(root=root, dir_=dir_, text_dict=text_dict, lang=lang):
-        return 0
 
-    return -2
+    if needs_check:
+        return check_spelling(text_dict)
+
+    return save_scrapings(root, dir_, format_, text_dict, lang)
+
 
 
 def main(args):
@@ -291,17 +294,11 @@ def main(args):
     Takes argparse arguments object,
     and returns exit code based on success of selected process.
     """    
-    exit_code = -1
     if verify_url(args.url) and verify_dir(args.directory):
-        try:
-            q = ScrapeQueue(args.url)
-            if args.check:
-                exit_code = check_spelling(queue=q)
-            else:
-                exit_code = scrape_webpage(queue=q, lang=args.language,\
-                                        format_=args.format, dir_=args.directory)
+       return scrape_webpage(root=args.url, dir_=args.directory, format_=args.format,\
+                             lang=args.language, needs_check=args.check) 
 
-    return exit_code
+    return -1
 
 
 if __name__ == "__main__":
@@ -323,7 +320,7 @@ if __name__ == "__main__":
                         help="Language of the webpage to be translated.")
     parser.add_argument("-f", "--format", choices=["csv", "txt"], nargs=1, default="txt",\
                         help="Format of the scraped ouput. Defaults to textfile.")
-    parser.add_argument("-d", "--directory", nargs=1, type=str, default=os.path.join(os.getenv("HOME"), "honyaku_output")\
+    parser.add_argument("-d", "--directory", nargs=1, type=str, default=os.path.join(os.getenv("HOME"), "honyaku_output"),\
                         help="Path to local directory for saving the output file")
     parser.add_argument("-c", "--check", action="store_true",\
                         help="Flag for whether input url is for check. Defaults to False.")

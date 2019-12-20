@@ -1,5 +1,5 @@
 import pytest
-from .scrapequeue import ScrapeQueue
+from honyaku.scrapequeue import ScrapeQueue
 
 
 # Setup / Teardown
