@@ -106,7 +106,7 @@ def yank_hrefs(root, url, anchors):
             continue # Avoid external links
         else:
             href_set.add(anchor["href"])   
-            
+
     return href_set
 
 
@@ -143,8 +143,8 @@ def detect_lang(text):
     
     # Settle on the most frequent language
     lang = ""
+    highest = 0
     for k, v in lang_freqs.items():
-        highest = 0
         if v > highest:
             highest = v
             lang = k

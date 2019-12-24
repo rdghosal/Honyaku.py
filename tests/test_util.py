@@ -59,9 +59,22 @@ def test_verify_dir(dir_, expected):
     assert util.verify_dir(dir_) == expected
 
 
-def test_yank_hrefs(root, url, anchors):
+def test_yank_hrefs_via_driver(root, url, anchors):
     hrefs = util.yank_hrefs(root, url, anchors)
     for href in hrefs:
         assert not href.startswith("http")
 
 
+@pytest.mark.parametrize(
+    "text, expected", 
+    [
+        (u"おはようございます！", "ja"),
+        (u"大家好,今日は寒いですね！,那是大熊猫吗？", "zh-CN"),
+        ("Testing English", "en")
+    ]
+)
+def test_clean_text(text, expected):
+    # Execute
+    actual = util.detect_lang(text)
+    # Verify
+    assert actual == expected
