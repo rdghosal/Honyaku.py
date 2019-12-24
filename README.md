@@ -21,7 +21,7 @@ python honyaku.py URL -c
 If you didn't know, Honyaku uses scraping libraries for its magic! <br>
 While BeautifulSoup is its first choice, if in scraping for links it finds something that doesn't resemble a URL,<br>
 Honyaku will then summon Selenium to parse what's probably a dynamic webpage.<br>
-At that time Honyaku will prompt you for a path to a Chrome Webdriver executable,
-which may be downloaded here: https://chromedriver.chromium.org/downloads
+Thus, you'll need to have downloaded the chromedriver matching your Chrome version to run Honyaku error-free.
+The chromedriver can be downloaded here: https://chromedriver.chromium.org/downloads
 
-If your refuse to download it, that's fine--Honyaku will do as much work as it can without the driver.
+To see what file outputs look like, take a look at the `examples` folder!
