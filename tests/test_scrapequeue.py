@@ -2,12 +2,20 @@ import pytest
 from honyaku.scrapequeue import ScrapeQueue
 
 
-# Setup / Teardown
+# ===============
+# -- FIXTURES --
+# ===============
+
+# Setup module-scope fixture
 @pytest.fixture(scope="module")
 def squeue():
     """Queue instance to be used herein"""
     return ScrapeQueue("https://www.firsturl.com")
 
+
+# =================
+# -- TEST CASES --
+# =================
 
 def test_sq_len(squeue):
     # Verify
@@ -15,8 +23,7 @@ def test_sq_len(squeue):
 
 
 def test_sq_enqueue_same(squeue):
-    """Adding duplicate url;
-    should not be added to queue"""
+    """Adding duplicate url; should not be added to queue"""
     # Execute
     squeue.enqueue("https://www.firsturl.com")
     # Verify
@@ -24,8 +31,7 @@ def test_sq_enqueue_same(squeue):
 
 
 def test_sq_enqueue_internal(squeue):
-    """Adding internal url
-    should increase queue len by 1"""
+    """Adding internal url; should increase queue len by 1"""
     # Execute
     squeue.enqueue("cats.html")
     # Verify
@@ -33,8 +39,7 @@ def test_sq_enqueue_internal(squeue):
 
 
 def test_sq_enqueue_external(squeue):
-    """Adding unique url;
-    should not increase queue len by 1"""
+    """Adding external url; should not increase queue len by 1"""
     # Execute
     squeue.enqueue("https://www.uniqueurl.com")
     # Verify

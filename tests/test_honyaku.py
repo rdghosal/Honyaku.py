@@ -1,5 +1,5 @@
-import pytest
-from honyaku import honyaku
+import pytest, os
+from honyaku import honyaku, util
 
 
 # ===============
@@ -46,7 +46,7 @@ def err_en_text_dict():
 @pytest.fixture(scope="module")
 def jp_text_dict():
     td = {
-        "home": [u"牛がモーと言います"]
+        "home": [u"牛がモーと言います", u"これもテスト"]
     }
     return td
 
@@ -62,3 +62,33 @@ def test_check_spelling(err_en_text_dict):
     actual = honyaku.check_spelling(err_en_text_dict)
     # Verify
     assert actual == expected
+
+def test_save_scrapings_txt(root, dir_, default_format, jp_text_dict, lang):
+    # Setup
+    expected = 0
+    util.verify_dir(dir_) # make dir if not existing
+    # Execute
+    actual = honyaku.save_scrapings(root, dir_, default_format, jp_text_dict, lang)
+    # Verify
+    assert actual == expected
+
+
+def test_save_scrapings_csv(root, dir_, csv_format, jp_text_dict, lang):
+    # Setup
+    expected = 0
+    util.verify_dir(dir_) # make dir if not existing
+    # Execute
+    actual = honyaku.save_scrapings(root, dir_, csv_format, jp_text_dict, lang)
+    # Verify
+    assert actual == expected
+
+
+# Essentially E2E test
+def test_scrape_webpage_no_lang_no_check(root, dir_, default_format):
+    # Setup 
+    expected = 0
+    # Execute
+    actual = honyaku.scrape_webpage(root, dir_, default_format)
+    # Verify
+    assert actual == expected
+    

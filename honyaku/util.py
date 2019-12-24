@@ -52,11 +52,13 @@ def yank_hrefs_via_driver(root, url):
     Uses Selenium à la Chrome to parse dynamic webpage for relative links
     """
     from time import sleep
+    print(f"Using Chrome Webdriver to scrape {url}")
+
     # TODO
     # Check path for Chrome driver before running up to here
 
     # Edit url for relative link parsing
-    if not root.endswith("/")    :
+    if not root.endswith("/"):
         root += "/"
 
     # Set up driver
@@ -69,7 +71,13 @@ def yank_hrefs_via_driver(root, url):
     options.binary_location = os.getenv("CHROME_DRIVER")
 
     # Init driver with config
-    browser = webdriver.Chrome(options=options)
+    try:
+        browser = webdriver.Chrome(options=options)
+    except:
+        print("Could not find chromedriver executable. Set to PATH and try again.")
+        return None
+
+    # Go to page
     browser.get(url)
 
     # Wait for content to load
@@ -99,9 +107,13 @@ def yank_hrefs(root, url, anchors):
         if href.find(".") == -1:
             # Faulty url found;
             # pass url to selenium driver for yanking
-            for x in yank_hrefs_via_driver(root, url):
-                href_set.add(x)
-            break
+            try:
+                for x in yank_hrefs_via_driver(root, url):
+                    href_set.add(x)
+                break
+            except AttributeError:
+                # Error in web driver
+                return None
         elif href.find("http"): 
             continue # Avoid external links
         else:

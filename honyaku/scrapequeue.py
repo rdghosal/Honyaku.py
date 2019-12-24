@@ -33,8 +33,9 @@ class ScrapeQueue():
     def enqueue(self, url):
         """Adds url to queue if new and internal to roo"""
         # Found an external link
-        if not url.find(self.__root) == 0 and url.startswith("http"):
-            print(f"Skipped enqueue of external link: {url}")
+        if not url.find(self.__root) == 0 and url.startswith("http")\
+            or not url.endswith(".html") or url.endswith(".aspx"):
+            print(f"Skipped enqueue of link: {url}")
             return None
         # Append root to relative url
         if not url.find(self.__root) == 0 and \

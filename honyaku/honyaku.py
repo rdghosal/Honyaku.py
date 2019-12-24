@@ -36,15 +36,15 @@ def check_spelling(text_dict):
                         break
 
                 if consent == "n": 
-                    return -2
+                    return -3
                 try:
                     # Download packages for basic functionality
                     download_corpora.download_lite()
-                    check_spelling(text_dict)
+                    check_spelling(text_dict) # Try again
                 except:
                     print("Error occured in package download.\n\
                            Check system or internet settings and try again.")
-                    return -3
+                    return -4
 
     return 0        
 
@@ -59,7 +59,7 @@ def _to_csv(fout, text_dict, lang):
     writer.writeheader()
     for k in text_dict.keys():
         print(f"  Writing lines scraped from page {k}")
-        fout.write(k.upper()) # To make clear what page is being written
+        fout.write(k.upper() + "\n") # To make clear what page is being written
         for line in text_dict[k]:
             writer.writerow({lang: line, "English": ""})
 
@@ -71,33 +71,32 @@ def _to_txt(fout, text_dict, lang):
     """
     for k in text_dict.keys():
         print(f"  Writing lines scraped from page {k}")
-        fout.write(k.upper())
+        fout.write(k.upper() + "\n")
         for line in text_dict[k]:
             fout.write(f"{lang}: {line}\n")
-            fout.write(f"English: \n")
-        fout.write("==========\n") # To separate from next page
+            fout.write(f"English: \n\n")
+        fout.write("==========\n\n") # To separate from next page
 
 
 def save_scrapings(root, dir_, format_, text_dict, lang):
     """
     Saves scraping output as local file
     """
-    # Format output file path
-    # as dir/dd-MM-yy_baseUrl.ext
+    # Format output file path as dir/dd-MM-yy_baseUrl.ext
     ext = format_
     today = date.strftime(date.today(), "%d-%m-%y")
     try:
-        base_url = re.search(r"https?://w?w?w?\.?(\d+)\.", root).group(1)
+        base_url = re.search(r"https?://www\.(.+)\.", root).group(1)
     except AttributeError:
         print("Failed to parse URL and assign filename to output file.")
-        return -2
+        return -3
 
     # Arrange pat for output path
     path = os.path.join(dir_, f"{today}_{base_url}.{ext}")
     print(f"Writing {os.path.split(path)[1]} to {os.path.split(path)[0]}")
 
     try:
-        with open(path, "w", encoding="utf-8") as fout:
+        with open(path, "w", encoding="utf-8", newline="") as fout:
             if format_ == "csv":
                 _to_csv(fout, text_dict, lang)
             else:
@@ -105,9 +104,9 @@ def save_scrapings(root, dir_, format_, text_dict, lang):
     except:
         print(f"Failed to save scrapings to {path}.\n\
                 Check system configurations and try again.")
-        return -3
+        return -4
 
-    print(f"Scraped webpage saved to {path}")
+    print(f"Scraped webpages saved to {path}")
     return 0
 
 
@@ -134,7 +133,11 @@ def scrape_webpage(root, dir_, format_, lang="", needs_check=False):
         # Using lmxl parser and utf-8 to account for various charsets
         soup = BeautifulSoup(r.content, "lxml", from_encoding="utf-8")
         hrefs = yank_hrefs(root, url, soup.find_all("a")) # set instance
-        
+        if not hrefs:
+            print(f"Error occured in scraping links from {url}.\n\
+                    Check status of chromedriver executable and try again.")
+            return -2
+
         # Add found links to queue
         for h in hrefs:
             queue.enqueue(h)
@@ -146,12 +149,12 @@ def scrape_webpage(root, dir_, format_, lang="", needs_check=False):
             lang = detect_lang(text) # Set lang
 
         text_dict[title] = clean_text(text) # Text passed as generator to lower mem load
+        print()
 
     if needs_check:
         return check_spelling(text_dict)
 
     return save_scrapings(root, dir_, format_, text_dict, lang)
-
 
 
 def main(args):
