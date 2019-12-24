@@ -18,13 +18,14 @@ def check_spelling(text_dict):
         print(f"Possible spelling errors in {page}:")
         # Iterate over words in lines in text for the page
         for line in text:
+            line = line.lower()
             blob = TextBlob(line)
             try:
                 for word in blob.words:
-                    for corrections in word.spellcheck():
-                        # Report only if confidence lower than 75%
-                        if corrections[0][1] < 0.75:
-                            print(f"  Word: {word} | Suggested Correction: {corrections[0][0]}")
+                    correction = word.spellcheck()[0]
+                    # Report only if confidence higher than 75%
+                    if correction[1] > 0.75:
+                        print(f"  Word: {word} | Suggested Correction: {correction[0]}")
 
             except MissingCorpusError or MissingCorpusException:
                 # Get user consent to download missing corpus for NLTK
@@ -39,9 +40,10 @@ def check_spelling(text_dict):
                 try:
                     # Download packages for basic functionality
                     download_corpora.download_lite()
+                    check_spelling(text_dict)
                 except:
-                    print("Error occured in package download.\
-                        \nCheck system or internet settings and try again.")
+                    print("Error occured in package download.\n\
+                           Check system or internet settings and try again.")
                     return -3
 
     return 0        
@@ -68,8 +70,8 @@ def _to_txt(fout, text_dict, lang):
     formatted to allow a 'staggered' view for the translation.
     """
     for k in text_dict.keys():
-        fout.write(k.upper())
         print(f"  Writing lines scraped from page {k}")
+        fout.write(k.upper())
         for line in text_dict[k]:
             fout.write(f"{lang}: {line}\n")
             fout.write(f"English: \n")
@@ -172,6 +174,10 @@ if __name__ == "__main__":
             Honyaku.py can also reports grammar and spelling errors post-translation--
             a useful feature for translators pressed for time.
             """
+    # Default values for optional args
+    default_dir = os.path.join(os.getenv("HOME"), "honyaku_output")
+    default_format = "txt"
+
     # Initialize parser
     parser = argparse.ArgumentParser(description=desc)
 
@@ -179,11 +185,11 @@ if __name__ == "__main__":
     parser.add_argument("url", help="Root url for scraping")
 
     # Optional args
-    parser.add_argument("-L", "--language", nargs=1,type=str,\
+    parser.add_argument("-L", "--language", nargs=1, type=str,\
                         help="Language of the webpage to be translated.")
-    parser.add_argument("-f", "--format", choices=["csv", "txt"], nargs=1, default="txt",\
+    parser.add_argument("-f", "--format", choices=["csv", "txt"], nargs=1, default=default_format,\
                         help="Format of the scraped ouput. Defaults to textfile.")
-    parser.add_argument("-d", "--directory", nargs=1, type=str, default=os.path.join(os.getenv("HOME"), "honyaku_output"),\
+    parser.add_argument("-d", "--directory", nargs=1, type=str, default=default_dir,\
                         help="Path to local directory for saving the output file")
     parser.add_argument("-c", "--check", action="store_true",\
                         help="Flag for whether input url is for check. Defaults to False.")

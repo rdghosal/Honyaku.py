@@ -11,7 +11,7 @@ import honyaku.util as util
 test_urls = ["www.url.com", "https://url.com", "http://www.url.jp"]
 test_dirs = ["c:/users", "c:/users/rdb/documents/test.docx"]
 
-# Setup / Teardown
+# Setup for module-scope args
 @pytest.fixture(scope="module")
 def anchors():
     r = requests.get(os.getenv("URL"))
@@ -68,12 +68,12 @@ def test_verify_dir(dir_, expected):
     assert util.verify_dir(dir_) == expected
 
 
-def test_yank_hrefs_via_driver(root, url, anchors):
-    # Execute
-    hrefs = util.yank_hrefs(root, url, anchors)
-    # Verify
-    for href in hrefs:
-        assert not href.startswith("http")
+# def test_yank_hrefs_via_driver(root, url, anchors):
+#     # Execute
+#     hrefs = util.yank_hrefs(root, url, anchors)
+#     # Verify
+#     for href in hrefs:
+#         assert not href.startswith("http")
 
 
 @pytest.mark.parametrize("text, expected", [("//bar,[[foo,baz", "baz")])
