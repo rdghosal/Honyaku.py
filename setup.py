@@ -1,4 +1,4 @@
 from setuptools import setup, find_packages
 
-setup(name="honyaku", packages=find_packages(exclude=("old")))
+setup(name="honyaku", packages=find_packages())
 
