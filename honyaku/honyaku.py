@@ -84,9 +84,14 @@ def save_scrapings(root, dir_, format_, text_dict, lang):
     # as dir/dd-MM-yy_baseUrl.ext
     ext = format_
     today = date.strftime(date.today(), "%d-%m-%y")
-    base_url = re.search(r"https?://w?w?w?\.?(\d+)\.", root).group(1)
+    try:
+        base_url = re.search(r"https?://w?w?w?\.?(\d+)\.", root).group(1)
+    except AttributeError:
+        print("Failed to parse URL and assign filename to output file.")
+        return -2
+
+    # Arrange pat for output path
     path = os.path.join(dir_, f"{today}_{base_url}.{ext}")
-    
     print(f"Writing {os.path.split(path)[1]} to {os.path.split(path)[0]}")
 
     try:
@@ -98,7 +103,7 @@ def save_scrapings(root, dir_, format_, text_dict, lang):
     except:
         print(f"Failed to save scrapings to {path}.\n\
                 Check system configurations and try again.")
-        return -2
+        return -3
 
     print(f"Scraped webpage saved to {path}")
     return 0
