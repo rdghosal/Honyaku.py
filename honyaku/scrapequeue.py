@@ -1,5 +1,5 @@
 import queue
-from .util import correct_url
+from util import correct_url
 
 class ScrapeQueue():
     """

@@ -5,8 +5,8 @@ from bs4 import BeautifulSoup
 from textblob import TextBlob, download_corpora
 from textblob.exceptions import MissingCorpusError, MissingCorpusException
 
-from .scrapequeue import ScrapeQueue
-from .util import verify_dir, verify_url, clean_text, detect_lang, yank_hrefs
+from scrapequeue import ScrapeQueue
+from util import verify_dir, verify_url, clean_text, detect_lang, yank_hrefs
 
 
 def check_spelling(text_dict):
@@ -163,7 +163,7 @@ def main(args):
     and returns exit code based on success of selected process.
     """    
     if verify_url(args.url) and verify_dir(args.directory):
-       return scrape_webpage(root=args.url, dir_=args.directory, format_=args.format,\
+        return scrape_webpage(root=args.url, dir_=args.directory, format_=args.format,\
                              lang=args.language, needs_check=args.check) 
 
     return -1
