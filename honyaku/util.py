@@ -114,14 +114,11 @@ def clean_text(text):
     """
     Returns the input text after cleaning for extraneous spaces and symbols
     """
-    # To convert into iterable
-    text = text.split(",")
-
     # Regex for lines starting with special chars
     # all of which are set to empty strings to be filtered out later
     for line in text.split(","):
         line = line.strip() # Clean off empty space
-        if not re.search(r"^[\\\[\"\'\/]", text[line]):
+        if not re.search(r"^[\\\[\"\'\/]", line):
             yield line
 
 
