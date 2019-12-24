@@ -126,7 +126,7 @@ def scrape_webpage(root, dir_, format_, lang="", needs_check=False):
         
         # Using lmxl parser and utf-8 to account for various charsets
         soup = BeautifulSoup(r.content, "lxml", from_encoding="utf-8")
-        hrefs = yank_hrefs(url, soup.find_all("a")) # set instance
+        hrefs = yank_hrefs(root, url, soup.find_all("a")) # set instance
         
         # Add found links to queue
         for h in hrefs:

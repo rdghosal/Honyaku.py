@@ -7,9 +7,8 @@ class ScrapeQueue():
     that are to be scrapped
     """
     def __init__(self, root):
-        # Ensure uniqueness of scraped urls
-        root = correct_url(root)
-        url_memo = {root}
+        root = correct_url(root) # Verify and append "/"
+        url_memo = {root} # Set instance to ensure uniqueness
 
         self.__root = root
         self.__url_memo = url_memo

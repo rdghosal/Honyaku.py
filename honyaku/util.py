@@ -37,7 +37,9 @@ def verify_dir(dir_):
     Makes dir if not yet existing.
     """
     is_valid = False
-    if os.path.isabs(dir_) and os.path.isdir(dir_):
+
+    # Check if absolute without a file extension
+    if os.path.isabs(dir_) and not os.path.splitext(dir_)[1]:
         is_valid = True
     if not os.path.exists(dir_):
         os.mkdir(dir_)
@@ -45,35 +47,49 @@ def verify_dir(dir_):
     return is_valid
 
 
-def yank_hrefs_via_driver(url):
+def yank_hrefs_via_driver(root, url):
     """
     Uses Selenium à la Chrome to parse dynamic webpage for relative links
     """
+    from time import sleep
     # TODO
     # Check path for Chrome driver before running up to here
-    
+
+    # Edit url for relative link parsing
+    if not root.endswith("/")    :
+        root += "/"
+
     # Set up driver
     options = Options()
     options.add_argument("--headless") # Run headless
+
+    # Configuration to avoid other possible, client-side bugs
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--no-sandbox")
     options.binary_location = os.getenv("CHROME_DRIVER")
 
-    # Init driver and pass set up
+    # Init driver with config
     browser = webdriver.Chrome(options=options)
     browser.get(url)
+
+    # Wait for content to load
+    sleep(3)
 
     # Get all anchors in the dynamic page
     # yield their respective href if relative
     anchors = browser.find_elements_by_tag_name("a")
-    for a in anchors:        
+    for a in anchors:
         href = a.get_attribute("href")
-        if href.find("http") == -1:
-            yield href
+        # If full links are returned, take only the suffix
+        if href.find(root) == 0:
+            end = len(root)
+            yield href[end:]
 
     # Close driver process
     browser.quit()
 
 
-def yank_hrefs(url, anchors):
+def yank_hrefs(root, url, anchors):
     """
     Returns a set of hrefs from a list of anchors
     """
@@ -83,13 +99,14 @@ def yank_hrefs(url, anchors):
         if href.find(".") == -1:
             # Faulty url found;
             # pass url to selenium driver for yanking
-            for x in yank_hrefs_via_driver(url):
+            for x in yank_hrefs_via_driver(root, url):
                 href_set.add(x)
+            break
         elif href.find("http"): 
             continue # Avoid external links
         else:
             href_set.add(anchor["href"])   
-
+            
     return href_set
 
 
