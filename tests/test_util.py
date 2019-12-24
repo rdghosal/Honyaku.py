@@ -64,18 +64,20 @@ def test_correct_url_ok(url):
     [(test_dirs[0], True), (test_dirs[1], False)]
 )
 def test_verify_dir(dir_, expected):
-    # Execute
+    # Execute & Verify
     assert util.verify_dir(dir_) == expected
 
 
 def test_yank_hrefs_via_driver(root, url, anchors):
+    # Execute
     hrefs = util.yank_hrefs(root, url, anchors)
+    # Verify
     for href in hrefs:
         assert not href.startswith("http")
 
 
 @pytest.mark.parametrize("text, expected", [("//bar,[[foo,baz", "baz")])
-def test_clean_text(text1, expected):
+def test_clean_text(text, expected):
     # Execute
     clean_text = util.clean_text(text)
     # Verify
@@ -86,13 +88,13 @@ def test_clean_text(text1, expected):
 
 @pytest.mark.parametrize(
     "text, expected", 
-    [
+    [   # Testing Japanese (ja), Chinese (zh-CN), and English (en) string parsing
         (u"おはようございます！", "ja"),
         (u"大家好,今日は寒いですね！,那是大熊猫吗？", "zh-CN"),
         ("Testing English", "en")
     ]
 )
-def test_clean_text(text, expected):
+def test_detect_lang(text, expected):
     # Execute
     actual = util.detect_lang(text)
     # Verify
